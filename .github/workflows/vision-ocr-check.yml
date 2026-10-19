@@ -1,0 +1,32 @@
+name: vision-ocr-check
+
+on: workflow_dispatch
+
+jobs:
+  ocr:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Labels are bitrise-runner-<pool name>. Change these if your pools are named differently.
+        runner:
+          - bitrise-runner-ocr-goldengate   # osx-goldengate pool (expected to fail)
+          - bitrise-runner-ocr-tahoe        # Tahoe pool (expected to pass)
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Environment
+        run: |
+          sw_vers
+          xcodebuild -version
+          uname -m
+
+      - name: Run OCR check
+        run: swift ocr-check.swift
+
+      - name: Vision / E5RT log lines
+        if: always()
+        run: |
+          log show --last 5m --style compact 2>/dev/null \
+            | grep -iE "E5RT|TextRecognition|STLException" \
+            | tail -n 60 || echo "No matching log lines"
